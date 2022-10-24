@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const app = require("../app");
+const startTransactionLoop = require("../services/getTransactionsLoop");
 
 const { PORT = 3000, DB_HOST } = process.env;
 
@@ -8,6 +9,7 @@ mongoose
   .then(() =>
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
+      startTransactionLoop();
     })
   )
   .catch((error) => {

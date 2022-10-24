@@ -1,63 +1,45 @@
 const { Transaction } = require("../../models");
 const { NotFound, BadRequest } = require("http-errors");
-
-const { getLastBlock, getBlockByNumber } = require("../../services");
-const {
-  hexToDec,
-  decToHex,
-  weiToEth,
-  feeCalculator,
-  sleep,
-} = require("../../helpers");
-const dayjs = require("dayjs");
-const MAX_BLOCKS_COUNT = 10;
+const { getLastBlock } = require("../../services");
 
 const getTransactions = async (req, res) => {
-  const lastBlockNumber = await getLastBlock();
-  const startingBlockNumber = lastBlockNumber - MAX_BLOCKS_COUNT;
-  // await Transaction.deleteMany({ blockNumber: { $lt: startingBlockNumber } });
+  let totalPageCount;
+  let transactions;
+  let totalTransactionsCount;
+  const currentBlockNumber = await getLastBlock();
+  const { filterOption, searchString, page = 1, limit = 14 } = req.query;
+  const skip = (+page - 1) * +limit;
 
-  // for (
-  //   let currentBlock = lastBlockNumber;
-  //   currentBlock >= startingBlockNumber;
-  //   currentBlock--
-  // ) {
-  //   await sleep(200);
-  //   const blockData = await getBlockByNumber(decToHex(currentBlock));
-  //   console.log(`Number of block: ${currentBlock}`);
-  //   await Promise.all(
-  //     blockData.transactions.map(async (blockItem) => {
-  //       if (blockItem.to) {
-  //         try {
-  //           await Transaction.create({
-  //             blockNumber: hexToDec(blockItem.blockNumber),
-  //             transactionId: blockItem.hash,
-  //             senderAdress: blockItem.from,
-  //             recipAdress: blockItem.to,
-  //             blockConfirmations: 0,
-  //             date: dayjs
-  //               .unix(hexToDec(blockData.timestamp))
-  //               .format("MMM-DD-YYYY"),
-  //             value: weiToEth(blockItem.value),
-  //             transactionFee: feeCalculator(blockItem.gas, blockItem.gasPrice),
-  //           });
-  //         } catch (error) {
-  //           console.log(error);
-  //         }
-  //       }
-  //     })
-  //   );
-  // }
+  if (searchString && filterOption) {
+    if (filterOption === "blockNumber" && !Number(searchString)) {
+      throw new BadRequest("Search by block number must have a number");
+    }
+    transactions = await Transaction.find(
+      { [filterOption]: searchString },
+      "",
+      {
+        skip,
+        limit: +limit,
+      }
+    );
+    totalTransactionsCount = await Transaction.countDocuments({
+      [filterOption]: searchString,
+    });
+  } else {
+    transactions = await Transaction.find({}, "", { skip, limit: +limit });
+    totalTransactionsCount = await Transaction.countDocuments();
+  }
 
-  const transactions = await Transaction.find({});
-  const totalCount = Math.ceil(transactions.length / 14);
+  totalPageCount = Math.ceil(totalTransactionsCount / limit);
 
   res.json({
     status: "success",
     code: 200,
     data: {
       transactions,
-      totalCount,
+      totalPageCount,
+      page,
+      currentBlockNumber,
     },
   });
 };

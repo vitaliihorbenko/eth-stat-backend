@@ -5,7 +5,7 @@ const transactionSchema = Schema(
     blockNumber: {
       type: Number,
       required: [true, "BlockNumber is required"],
-      index: true,
+      index: -1,
     },
     transactionId: {
       type: String,
